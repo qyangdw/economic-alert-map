@@ -17,9 +17,10 @@ import type { CpiDataPoint } from '@/types'
 import { cpiColor } from '@/lib/cpi-data'
 import type { CrisisEvent } from '@/types'
 
+// OpenFreeMap — completely free, no API key, includes country borders
 const STYLES = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  light: 'https://tiles.openfreemap.org/styles/liberty',
 }
 
 // Threat level colours
