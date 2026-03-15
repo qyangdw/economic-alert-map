@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Hide scrollbar but keep scrollable */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* Dark theme (default) — financial terminal aesthetic */
 :root {
   --bg-primary: #080b12;

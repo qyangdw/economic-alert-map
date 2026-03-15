@@ -8,10 +8,19 @@ const CACHE_KEY = 'indicators'
 const CACHE_TTL = 300_000
 
 const YAHOO_SYMBOLS = [
+  // Indices
+  { symbol: '^GSPC', name: 'S&P 500' },
+  { symbol: '^IXIC', name: 'NASDAQ' },
+  { symbol: '^GDAXI', name: 'DAX' },
+  { symbol: '^N225', name: 'Nikkei' },
+  { symbol: '000001.SS', name: 'SSE' },
+  { symbol: '^HSI', name: 'Hang Seng' },
+  // Commodities
   { symbol: 'CL=F', name: 'WTI Oil' },
   { symbol: 'GC=F', name: 'Gold' },
+  { symbol: 'NG=F', name: 'Nat Gas' },
+  // Volatility
   { symbol: '^VIX', name: 'VIX' },
-  { symbol: '^GSPC', name: 'S&P 500' },
 ]
 
 async function fetchQuote(symbol: string, name: string): Promise<MarketIndicator | null> {
@@ -45,47 +54,72 @@ async function fetchQuote(symbol: string, name: string): Promise<MarketIndicator
   }
 }
 
-async function fetchBTC(): Promise<MarketIndicator | null> {
-  // Try Binance first, fallback to CoinGecko (Binance blocked from US IPs)
-  try {
-    const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', {
-      signal: AbortSignal.timeout(3000),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      return {
-        symbol: 'BTCUSDT',
-        name: 'BTC',
-        price: Math.round(parseFloat(data.lastPrice) * 100) / 100,
-        change: Math.round(parseFloat(data.priceChange) * 100) / 100,
-        changePercent: Math.round(parseFloat(data.priceChangePercent) * 100) / 100,
-        timestamp: new Date(data.closeTime).toISOString(),
-      }
-    }
-  } catch { /* fall through */ }
+// Fetch multiple crypto prices at once from CoinGecko (free, no key)
+async function fetchCrypto(): Promise<MarketIndicator[]> {
+  const COINS = [
+    { id: 'bitcoin', symbol: 'BTC', name: 'BTC' },
+    { id: 'ethereum', symbol: 'ETH', name: 'ETH' },
+    { id: 'binancecoin', symbol: 'BNB', name: 'BNB' },
+    { id: 'solana', symbol: 'SOL', name: 'SOL' },
+    { id: 'tether', symbol: 'USDT', name: 'USDT' },
+    { id: 'ripple', symbol: 'XRP', name: 'XRP' },
+  ]
 
-  // Fallback: CoinGecko (works from US)
+  // Try Binance first for BTC/ETH/BNB/SOL
   try {
+    const binanceSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT']
     const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true',
-      { signal: AbortSignal.timeout(5000) },
+      `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(binanceSymbols))}`,
+      { signal: AbortSignal.timeout(4000) },
     )
-    if (!res.ok) return null
-    const data = await res.json()
-    const price = data.bitcoin?.usd
-    const changePct = data.bitcoin?.usd_24h_change
-    if (!price) return null
-
-    return {
-      symbol: 'BTCUSDT',
-      name: 'BTC',
-      price: Math.round(price * 100) / 100,
-      change: Math.round((price * changePct / 100) * 100) / 100,
-      changePercent: Math.round(changePct * 100) / 100,
-      timestamp: new Date().toISOString(),
+    if (res.ok) {
+      const data = await res.json() as Array<{
+        symbol: string; lastPrice: string; priceChange: string; priceChangePercent: string; closeTime: number
+      }>
+      const results: MarketIndicator[] = data.map(d => {
+        const nameMap: Record<string, string> = {
+          BTCUSDT: 'BTC', ETHUSDT: 'ETH', BNBUSDT: 'BNB', SOLUSDT: 'SOL', XRPUSDT: 'XRP',
+        }
+        return {
+          symbol: d.symbol,
+          name: nameMap[d.symbol] ?? d.symbol,
+          price: Math.round(parseFloat(d.lastPrice) * 100) / 100,
+          change: Math.round(parseFloat(d.priceChange) * 100) / 100,
+          changePercent: Math.round(parseFloat(d.priceChangePercent) * 100) / 100,
+          timestamp: new Date(d.closeTime).toISOString(),
+        }
+      })
+      // Add USDT separately (always ~1.00)
+      results.push({ symbol: 'USDT', name: 'USDT', price: 1.00, change: 0, changePercent: 0, timestamp: new Date().toISOString() })
+      return results
     }
+  } catch { /* fall through to CoinGecko */ }
+
+  // CoinGecko fallback
+  try {
+    const ids = COINS.map(c => c.id).join(',')
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
+      { signal: AbortSignal.timeout(6000) },
+    )
+    if (!res.ok) return []
+    const data = await res.json()
+    return COINS.map(({ id, symbol, name }) => {
+      const coin = data[id]
+      if (!coin) return null
+      const price = coin.usd ?? 0
+      const changePct = coin.usd_24h_change ?? 0
+      return {
+        symbol,
+        name,
+        price: Math.round(price * 100) / 100,
+        change: Math.round((price * changePct / 100) * 100) / 100,
+        changePercent: Math.round(changePct * 100) / 100,
+        timestamp: new Date().toISOString(),
+      }
+    }).filter((v): v is MarketIndicator => v !== null)
   } catch {
-    return null
+    return []
   }
 }
 
@@ -98,14 +132,15 @@ export async function GET() {
       })
     }
 
-    const results = await Promise.allSettled([
+    const [cryptoList, ...quoteResults] = await Promise.all([
+      fetchCrypto(),
       ...YAHOO_SYMBOLS.map(s => fetchQuote(s.symbol, s.name)),
-      fetchBTC(),
     ])
 
-    const indicators = results
-      .map(r => r.status === 'fulfilled' ? r.value : null)
+    const stockIndicators = quoteResults
       .filter((v): v is MarketIndicator => v !== null)
+
+    const indicators: MarketIndicator[] = [...stockIndicators, ...cryptoList]
 
     setCache(CACHE_KEY, indicators, CACHE_TTL)
     return NextResponse.json({ success: true, data: indicators }, {
