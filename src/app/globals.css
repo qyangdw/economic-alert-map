@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Dark theme (default) — financial terminal aesthetic */
+:root {
+  --bg-primary: #080b12;
+  --bg-secondary: #0f1420;
+  --bg-tertiary: #161d2e;
+  --border: #1e2a40;
+  --text-primary: #e2e8f0;
+  --text-secondary: #7a8aab;
+  --accent-red: #ef4444;
+  --accent-orange: #f97316;
+  --accent-yellow: #eab308;
+  --accent-blue: #3b82f6;
+  --accent-green: #22c55e;
+  --accent-amber: #f59e0b;
+  --accent-gold: #d97706;
+}
+
+/* Light theme */
+html.light {
+  --bg-primary: #f0f2f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e4e8f0;
+  --border: #c4cce0;
+  --text-primary: #1a2035;
+  --text-secondary: #546080;
+  --accent-red: #dc2626;
+  --accent-orange: #ea580c;
+  --accent-yellow: #ca8a04;
+  --accent-blue: #2563eb;
+  --accent-green: #16a34a;
+  --accent-amber: #d97706;
+  --accent-gold: #b45309;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* MapLibre popup overrides */
+.maplibregl-popup-content {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  min-width: 260px !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--bg-secondary) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--text-secondary) !important;
+  font-size: 18px !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Economic category badge colors */
+.badge-tariff {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-amber);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.badge-trade {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+.badge-economic {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--accent-green);
+  border-color: rgba(34, 197, 94, 0.3);
+}
